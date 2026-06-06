@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.env
+**/.wrangler/
+artifacts/
+.git/
+.gitignore
+Dockerfile
+*.user
+*.tsbuildinfo
+BrandonFintech.Web/
+cloudflare-worker/node_modules/
+cloudflare-worker/.wrangler/
