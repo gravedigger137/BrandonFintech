@@ -81,8 +81,10 @@ function Shell({ user, onLogout }: { user: User | null; onLogout: () => void }) 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link to="/" className="brand">BrandonFintech</Link>
-        <span className="nav-label">Workspace</span>
+        <Link to="/" className="brand">
+          <span className="brand-mark">B</span>
+          <span>BrandonFintech</span>
+        </Link>
         <nav>
           <NavLink to="/">Dashboard</NavLink>
           <NavLink to="/accounts">Accounts</NavLink>
@@ -210,6 +212,10 @@ function AuthLayout({ title, children }: { title: string; children: ReactNode })
   return (
     <main className="auth-page">
       <section className="auth-panel">
+        <Link to="/login" className="auth-brand">
+          <span className="brand-mark">B</span>
+          <span>BrandonFintech</span>
+        </Link>
         <h1>{title}</h1>
         {children}
       </section>
@@ -219,18 +225,38 @@ function AuthLayout({ title, children }: { title: string; children: ReactNode })
 
 function DashboardPage() {
   const state = useLoader(() => api.dashboard(), []);
+  const accountsState = useLoader(() => api.accounts(), []);
   const summary = state.data;
+  const accounts = accountsState.data?.accounts ?? [];
+  const pendingBalance = accounts.reduce((total, account) => total + (account.pendingBalance ?? 0), 0);
 
   return (
     <Page title="Dashboard" state={state}>
       {summary && (
         <>
           {summary.message && <Notice notice={{ kind: "error", text: summary.message }} />}
+          <section className="dashboard-hero">
+            <div>
+              <span className="eyebrow">Portfolio overview</span>
+              <h2>{formatMoney(summary.totalAvailableBalance)} available</h2>
+              <p>{accounts.length} active account{accounts.length === 1 ? "" : "s"} tracked in BrandonFintech.</p>
+            </div>
+            <div className="hero-balance">
+              <span>Pending review</span>
+              <strong>{formatMoney(pendingBalance)}</strong>
+            </div>
+          </section>
           <div className="metrics">
-            <Metric label="Accounts" value={summary.totalAccounts ?? 0} />
-            <Metric label="Available" value={formatMoney(summary.totalAvailableBalance)} />
-            <Metric label="Payments" value={summary.totalPayments ?? 0} />
-            <Metric label="Transfers" value={summary.totalTransfers ?? 0} />
+            <Metric label="Accounts" value={summary.totalAccounts ?? 0} tone="blue" />
+            <Metric label="Available balance" value={formatMoney(summary.totalAvailableBalance)} tone="green" />
+            <Metric label="Pending balance" value={formatMoney(pendingBalance)} tone="amber" />
+            <Metric label="Payments" value={summary.totalPayments ?? 0} tone="violet" />
+            <Metric label="Transfers" value={summary.totalTransfers ?? 0} tone="slate" />
+          </div>
+          <div className="grid three">
+            <VisualPanel title="Balance trend" caption="Placeholder for settled and pending balance movement." variant="trend" />
+            <VisualPanel title="Payments summary" caption="Placeholder for Stripe test payment outcomes." variant="bars" />
+            <VisualPanel title="Transfer activity" caption="Placeholder for debit and credit flow volume." variant="activity" />
           </div>
           <div className="grid two">
             <Panel title="Recent payments">
@@ -327,6 +353,15 @@ function AccountsPage() {
           {creatingAccount ? "Creating..." : "Create account"}
         </button>
         <Notice notice={notice} />
+      </div>
+      <div className="account-card-grid">
+        {accounts.slice(0, 3).map((account) => (
+          <article className="account-summary-card" key={account.id}>
+            <span>{account.accountNumber}</span>
+            <strong>{formatMoney(account.availableBalance)}</strong>
+            <small>Pending {formatMoney(account.pendingBalance)}</small>
+          </article>
+        ))}
       </div>
       <AccountTable accounts={accounts} onExport={exportStatement} />
       <Panel title="Deposit funds">
@@ -626,7 +661,10 @@ function Page<T>({ title, state, children }: { title: string; state?: LoadState<
   return (
     <section>
       <header className="page-header">
-        <h1>{title}</h1>
+        <div>
+          <span className="eyebrow">BrandonFintech</span>
+          <h1>{title}</h1>
+        </div>
       </header>
       {state?.loading && <LoadingBlock label={`Loading ${title.toLowerCase()}...`} />}
       {state?.error && <ErrorBlock message={state.error} />}
@@ -679,12 +717,29 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-function Metric({ label, value }: { label: string; value: ReactNode }) {
+function Metric({ label, value, tone = "slate" }: { label: string; value: ReactNode; tone?: string }) {
   return (
-    <div className="metric">
+    <div className={`metric metric-${tone}`}>
       <span>{label}</span>
       <strong>{value}</strong>
     </div>
+  );
+}
+
+function VisualPanel({ title, caption, variant }: { title: string; caption: string; variant: "trend" | "bars" | "activity" }) {
+  return (
+    <section className="visual-panel">
+      <div>
+        <h2>{title}</h2>
+        <p>{caption}</p>
+      </div>
+      <div className={`visual visual-${variant}`} aria-hidden="true">
+        <span />
+        <span />
+        <span />
+        <span />
+      </div>
+    </section>
   );
 }
 
@@ -715,9 +770,13 @@ function Notice({ notice }: { notice: NoticeState }) {
 
 function LoadingBlock({ label }: { label: string }) {
   return (
-    <div className="loading-block" role="status" aria-live="polite">
-      <span className="spinner" />
+    <div className="loading-block skeleton-wrap" role="status" aria-live="polite">
       <span>{label}</span>
+      <div className="skeleton-grid">
+        <span />
+        <span />
+        <span />
+      </div>
     </div>
   );
 }
