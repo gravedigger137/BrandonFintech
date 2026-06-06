@@ -1,0 +1,6 @@
+@BrandonFintech.Api_HostAddress = http://localhost:5015
+
+GET {{BrandonFintech.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

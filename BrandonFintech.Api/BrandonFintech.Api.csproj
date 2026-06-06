@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>9e89cd3d-e3a6-444b-aca2-12addf48fe5a</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.16" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.5">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.15.3" />
+    <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="Stripe.net" Version="51.2.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\BrandonFintech.Common\BrandonFintech.Common.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Contracts\BrandonFintech.Contracts.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Infrastructure\BrandonFintech.Infrastructure.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Identity\BrandonFintech.Identity.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Accounts\BrandonFintech.Accounts.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Ledger\BrandonFintech.Ledger.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Payments\BrandonFintech.Payments.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Transfers\BrandonFintech.Transfers.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Admin\BrandonFintech.Admin.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Audit\BrandonFintech.Audit.csproj" />
+  </ItemGroup>
+
+</Project>

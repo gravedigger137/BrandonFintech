@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "brandonfintech-ai-gateway",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-05",
+  "observability": {
+    "enabled": true
+  },
+  "vars": {
+    "OLLAMA_MODEL": "tinyllama",
+    "OLLAMA_BASE_URL": "http://localhost:11434"
+  }
+}
