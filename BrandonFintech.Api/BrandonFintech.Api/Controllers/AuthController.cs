@@ -7,6 +7,7 @@ using BrandonFintech.Infrastructure;
 using BrandonFintech.Ledger;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
@@ -34,6 +35,7 @@ public class AuthController : ControllerBase
         _jwtService = jwtService;
     }
 
+    [EnableRateLimiting("AuthSensitive")]
     [HttpPost("register")]
     public async Task<IActionResult> Register(RegisterRequest request)
     {
@@ -122,6 +124,7 @@ public class AuthController : ControllerBase
         });
     }
 
+    [EnableRateLimiting("AuthSensitive")]
     [HttpPost("login")]
     public async Task<IActionResult> Login(LoginRequest request)
     {

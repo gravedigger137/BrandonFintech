@@ -1,0 +1,5 @@
+OLLAMA_MODEL=tinyllama
+OLLAMA_BASE_URL=https://staging-ollama-tunnel.example.com
+AI_GATEWAY_SHARED_SECRET=REPLACE_WITH_STAGING_SHARED_SECRET
+ALLOWED_ORIGINS=https://staging-app.infinitearcadia.com,https://staging-fintech.infinitearcadia.com
+

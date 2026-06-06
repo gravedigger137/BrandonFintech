@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Serilog;
 using Stripe;
+using System.Threading.RateLimiting;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -31,6 +32,17 @@ if (string.IsNullOrWhiteSpace(jwtIssuer) ||
     string.IsNullOrWhiteSpace(jwtSecret))
 {
     throw new InvalidOperationException("JWT configuration is missing.");
+}
+
+if (jwtSecret.Length < 32)
+{
+    throw new InvalidOperationException("JWT secret must be at least 32 characters.");
+}
+
+if (builder.Environment.IsProduction() &&
+    jwtSecret.Contains("ChangeThis", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException("JWT secret must be replaced for production.");
 }
 
 builder.Services
@@ -62,16 +74,53 @@ if (!string.IsNullOrWhiteSpace(stripeSecretKey))
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddOpenApi();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Default", policy =>
     {
+        var configuredOrigins = builder.Configuration["Cors:AllowedOrigins"] ??
+            Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS");
+
+        var allowedOrigins = (configuredOrigins ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+        {
+            allowedOrigins =
+            [
+                "http://localhost:5173",
+                "http://localhost:5015",
+                "https://localhost:5173"
+            ];
+        }
+
+        if (allowedOrigins.Length == 0)
+        {
+            throw new InvalidOperationException("CORS allowed origins must be configured outside Development.");
+        }
+
         policy
-            .AllowAnyOrigin()
+            .WithOrigins(allowedOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
+});
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("AuthSensitive", httpContext =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(15),
+                QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
+                QueueLimit = 0
+            }));
 });
 
 var app = builder.Build();
@@ -85,6 +134,22 @@ app.UseCors("Default");
 
 app.UseHttpsRedirection();
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+    if (!app.Environment.IsDevelopment())
+    {
+        context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    }
+
+    await next();
+});
+
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

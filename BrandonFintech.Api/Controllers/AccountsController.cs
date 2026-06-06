@@ -258,9 +258,9 @@ public class AccountsController : ControllerBase
         {
             csv.Append(CsvEscape(entry.CreatedAt.ToString("O", CultureInfo.InvariantCulture)));
             csv.Append(',');
-            csv.Append(CsvEscape(entry.EntryType));
+            csv.Append(CsvEscapeText(entry.EntryType));
             csv.Append(',');
-            csv.Append(CsvEscape(entry.Description));
+            csv.Append(CsvEscapeText(entry.Description));
             csv.Append(',');
             csv.Append(CsvEscape(entry.Amount.ToString(CultureInfo.InvariantCulture)));
             csv.Append(',');
@@ -396,5 +396,15 @@ public class AccountsController : ControllerBase
         }
 
         return value;
+    }
+
+    private static string CsvEscapeText(string value)
+    {
+        if (!string.IsNullOrEmpty(value) && "=+-@\t".Contains(value[0]))
+        {
+            value = "'" + value;
+        }
+
+        return CsvEscape(value);
     }
 }

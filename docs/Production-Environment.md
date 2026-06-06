@@ -12,6 +12,7 @@ Jwt__Audience=BrandonFintechUsers
 Jwt__Secret=REPLACE_WITH_LONG_RANDOM_SECRET
 Stripe__SecretKey=sk_test_REPLACE_ME
 Stripe__WebhookSecret=whsec_REPLACE_ME
+Cors__AllowedOrigins=https://fintech.YOURDOMAIN.com
 ```
 
 Use `sk_test_...` and test webhook secrets until the full live-mode checklist is complete. Use `sk_live_...` only after the live webhook endpoint, CORS, admin controls, logging, and database backups are verified.

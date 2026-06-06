@@ -83,7 +83,10 @@ function Shell({ user, onLogout }: { user: User | null; onLogout: () => void }) 
       <aside className="sidebar">
         <Link to="/" className="brand">
           <span className="brand-mark">B</span>
-          <span>BrandonFintech</span>
+          <span className="brand-text">
+            <span>BrandonFintech</span>
+            <small>by InfiniteArcadia</small>
+          </span>
         </Link>
         <nav>
           <NavLink to="/">Dashboard</NavLink>
@@ -214,7 +217,10 @@ function AuthLayout({ title, children }: { title: string; children: ReactNode })
       <section className="auth-panel">
         <Link to="/login" className="auth-brand">
           <span className="brand-mark">B</span>
-          <span>BrandonFintech</span>
+          <span className="brand-text">
+            <span>BrandonFintech</span>
+            <small>by InfiniteArcadia</small>
+          </span>
         </Link>
         <h1>{title}</h1>
         {children}

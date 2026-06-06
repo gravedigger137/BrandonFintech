@@ -4,6 +4,7 @@ using BrandonFintech.Contracts;
 using BrandonFintech.Infrastructure;
 using BrandonFintech.Payments;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Stripe;
@@ -22,15 +23,18 @@ public class PaymentsController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IConfiguration _configuration;
     private readonly IIdempotencyService _idempotencyService;
+    private readonly IMemoryCache _webhookReplayCache;
 
     public PaymentsController(
         ApplicationDbContext db,
         IConfiguration configuration,
-        IIdempotencyService idempotencyService)
+        IIdempotencyService idempotencyService,
+        IMemoryCache webhookReplayCache)
     {
         _db = db;
         _configuration = configuration;
         _idempotencyService = idempotencyService;
+        _webhookReplayCache = webhookReplayCache;
     }
 
     [HttpPost("intents")]
@@ -169,6 +173,23 @@ public class PaymentsController : ControllerBase
                 success = false,
                 message = "Invalid Stripe signature"
             });
+        }
+
+        if (!string.IsNullOrWhiteSpace(stripeEvent.Id))
+        {
+            var replayCacheKey = $"stripe-event:{stripeEvent.Id}";
+            if (_webhookReplayCache.TryGetValue(replayCacheKey, out _))
+            {
+                return Ok(new
+                {
+                    success = true,
+                    received = true,
+                    replayed = true,
+                    handled = false
+                });
+            }
+
+            _webhookReplayCache.Set(replayCacheKey, true, TimeSpan.FromHours(24));
         }
 
         _db.AuditLogs.Add(new AuditLog
