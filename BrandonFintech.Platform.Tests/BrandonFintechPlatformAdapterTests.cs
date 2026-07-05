@@ -110,7 +110,7 @@ public sealed class BrandonFintechPlatformAdapterTests
     [Fact]
     public async Task Adapter_Publishes_When_Enabled_And_Configured()
     {
-        var publisher = new RecordingPublisher();
+        var publisher = new InMemoryPlatformEventPublisher();
         var adapter = new BrandonFintechPlatformAdapter(enabled: true, publisher);
         var platformEvent = BrandonFintechPlatformMapper.MapTransferCreated(new Transfer
         {
@@ -123,18 +123,33 @@ public sealed class BrandonFintechPlatformAdapterTests
         var result = await adapter.PublishAsync(platformEvent);
 
         Assert.Equal(PlatformPublishResult.Published, result.Status);
-        Assert.Single(publisher.Events);
-        Assert.Equal(PlatformEventType.TransferCreated, publisher.Events[0].Type);
+        Assert.Single(publisher.PublishedEvents);
+        Assert.Equal(PlatformEventType.TransferCreated, publisher.PublishedEvents.Single().Type);
     }
 
-    private sealed class RecordingPublisher : IPlatformEventPublisher
+    [Fact]
+    public async Task Adapter_TryPublish_Is_Best_Effort_For_Runtime_Flows()
     {
-        public List<PlatformDomainEvent> Events { get; } = [];
+        var adapter = new BrandonFintechPlatformAdapter(enabled: true, new FailingPublisher());
+        var platformEvent = BrandonFintechPlatformMapper.MapAuditLogged(new AuditLog
+        {
+            Action = "test",
+            EntityType = "unit",
+            EntityId = "unit_123"
+        });
 
+        var result = await adapter.TryPublishAsync(platformEvent);
+
+        Assert.Equal(PlatformPublishResult.Failed, result.Status);
+        Assert.Equal(PlatformEventType.AuditLogged, result.EventType);
+        Assert.Equal(platformEvent.Id, result.EventId);
+    }
+
+    private sealed class FailingPublisher : IPlatformEventPublisher
+    {
         public Task PublishAsync(PlatformDomainEvent platformEvent, CancellationToken cancellationToken = default)
         {
-            Events.Add(platformEvent);
-            return Task.CompletedTask;
+            throw new InvalidOperationException("publisher unavailable");
         }
     }
 }

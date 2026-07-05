@@ -3,6 +3,7 @@ using BrandonFintech.Api.Services;
 using BrandonFintech.Contracts;
 using BrandonFintech.Infrastructure;
 using BrandonFintech.Payments;
+using BrandonFintech.Platform;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.Mvc;
@@ -24,17 +25,20 @@ public class PaymentsController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IIdempotencyService _idempotencyService;
     private readonly IMemoryCache _webhookReplayCache;
+    private readonly BrandonFintechPlatformAdapter _platformAdapter;
 
     public PaymentsController(
         ApplicationDbContext db,
         IConfiguration configuration,
         IIdempotencyService idempotencyService,
-        IMemoryCache webhookReplayCache)
+        IMemoryCache webhookReplayCache,
+        BrandonFintechPlatformAdapter platformAdapter)
     {
         _db = db;
         _configuration = configuration;
         _idempotencyService = idempotencyService;
         _webhookReplayCache = webhookReplayCache;
+        _platformAdapter = platformAdapter;
     }
 
     [HttpPost("intents")]
@@ -192,16 +196,19 @@ public class PaymentsController : ControllerBase
             _webhookReplayCache.Set(replayCacheKey, true, TimeSpan.FromHours(24));
         }
 
-        _db.AuditLogs.Add(new AuditLog
+        var webhookReceivedAuditLog = new AuditLog
         {
             Action = "StripeWebhookReceived",
             EntityType = "StripeEvent",
             EntityId = stripeEvent.Id ?? string.Empty
-        });
+        };
+
+        _db.AuditLogs.Add(webhookReceivedAuditLog);
 
         if (!IsSupportedPaymentIntentEvent(stripeEvent.Type))
         {
             await _db.SaveChangesAsync();
+            await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(webhookReceivedAuditLog));
 
             return Ok(new
             {
@@ -215,6 +222,7 @@ public class PaymentsController : ControllerBase
         if (paymentIntent == null)
         {
             await _db.SaveChangesAsync();
+            await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(webhookReceivedAuditLog));
 
             return Ok(new
             {
@@ -229,14 +237,18 @@ public class PaymentsController : ControllerBase
 
         if (payment == null)
         {
-            _db.AuditLogs.Add(new AuditLog
+            var paymentNotFoundAuditLog = new AuditLog
             {
                 Action = "StripePaymentNotFound",
                 EntityType = nameof(PaymentIntent),
                 EntityId = paymentIntent.Id
-            });
+            };
+
+            _db.AuditLogs.Add(paymentNotFoundAuditLog);
 
             await _db.SaveChangesAsync();
+            await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(webhookReceivedAuditLog));
+            await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(paymentNotFoundAuditLog));
 
             return Ok(new
             {
@@ -248,14 +260,23 @@ public class PaymentsController : ControllerBase
 
         payment.Status = paymentIntent.Status;
 
-        _db.AuditLogs.Add(new AuditLog
+        var paymentStatusAuditLog = new AuditLog
         {
             Action = "PaymentStatusUpdatedFromStripeWebhook",
             EntityType = nameof(Payment),
             EntityId = payment.Id.ToString()
-        });
+        };
+
+        _db.AuditLogs.Add(paymentStatusAuditLog);
 
         await _db.SaveChangesAsync();
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(webhookReceivedAuditLog));
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(paymentStatusAuditLog));
+
+        if (IsCompletedPaymentStatus(payment.Status))
+        {
+            await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapPaymentCompleted(payment));
+        }
 
         return Ok(new
         {
@@ -366,6 +387,9 @@ public class PaymentsController : ControllerBase
             "payment_intent.succeeded" or
             "payment_intent.payment_failed" or
             "payment_intent.canceled";
+
+    private static bool IsCompletedPaymentStatus(string status)
+        => status.Equals("succeeded", StringComparison.OrdinalIgnoreCase);
 
     private static PaymentIntent? GetPaymentIntent(Event stripeEvent)
     {

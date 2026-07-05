@@ -32,6 +32,7 @@
     <ProjectReference Include="..\BrandonFintech.Transfers\BrandonFintech.Transfers.csproj" />
     <ProjectReference Include="..\BrandonFintech.Admin\BrandonFintech.Admin.csproj" />
     <ProjectReference Include="..\BrandonFintech.Audit\BrandonFintech.Audit.csproj" />
+    <ProjectReference Include="..\BrandonFintech.Platform\BrandonFintech.Platform.csproj" />
   </ItemGroup>
 
 </Project>

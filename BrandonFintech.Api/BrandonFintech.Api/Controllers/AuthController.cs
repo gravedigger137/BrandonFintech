@@ -5,6 +5,7 @@ using BrandonFintech.Contracts;
 using BrandonFintech.Identity;
 using BrandonFintech.Infrastructure;
 using BrandonFintech.Ledger;
+using BrandonFintech.Platform;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
@@ -28,11 +29,16 @@ public class AuthController : ControllerBase
 
     private readonly ApplicationDbContext _db;
     private readonly IJwtService _jwtService;
+    private readonly BrandonFintechPlatformAdapter _platformAdapter;
 
-    public AuthController(ApplicationDbContext db, IJwtService jwtService)
+    public AuthController(
+        ApplicationDbContext db,
+        IJwtService jwtService,
+        BrandonFintechPlatformAdapter platformAdapter)
     {
         _db = db;
         _jwtService = jwtService;
+        _platformAdapter = platformAdapter;
     }
 
     [EnableRateLimiting("AuthSensitive")]
@@ -99,6 +105,9 @@ public class AuthController : ControllerBase
         _db.AuditLogs.Add(promotionalAuditLog);
 
         await _db.SaveChangesAsync();
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapUserCreated(user));
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAccountCreated(defaultAccount));
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(promotionalAuditLog));
 
         return Ok(new
         {

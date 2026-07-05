@@ -5,4 +5,5 @@ public sealed record PlatformPublishResult(string Status, string EventType, stri
     public const string Disabled = "disabled";
     public const string Published = "published";
     public const string NotConfigured = "not_configured";
+    public const string Failed = "failed";
 }

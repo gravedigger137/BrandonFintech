@@ -3,6 +3,7 @@ using BrandonFintech.Api.Services;
 using BrandonFintech.Audit;
 using BrandonFintech.Contracts;
 using BrandonFintech.Infrastructure;
+using BrandonFintech.Platform;
 using BrandonFintech.Transfers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,15 +25,18 @@ public class TransfersController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly ILedgerService _ledgerService;
     private readonly IIdempotencyService _idempotencyService;
+    private readonly BrandonFintechPlatformAdapter _platformAdapter;
 
     public TransfersController(
         ApplicationDbContext db,
         ILedgerService ledgerService,
-        IIdempotencyService idempotencyService)
+        IIdempotencyService idempotencyService,
+        BrandonFintechPlatformAdapter platformAdapter)
     {
         _db = db;
         _ledgerService = ledgerService;
         _idempotencyService = idempotencyService;
+        _platformAdapter = platformAdapter;
     }
 
     [HttpPost("internal")]
@@ -117,6 +121,8 @@ public class TransfersController : ControllerBase
         _db.AuditLogs.Add(auditLog);
 
         await _db.SaveChangesAsync();
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapTransferCreated(transfer));
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(auditLog));
 
         var description = string.IsNullOrWhiteSpace(request.Description)
             ? "Internal transfer"

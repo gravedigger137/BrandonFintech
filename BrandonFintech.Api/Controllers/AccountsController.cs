@@ -3,6 +3,7 @@ using BrandonFintech.Api.Services;
 using BrandonFintech.Audit;
 using BrandonFintech.Contracts;
 using BrandonFintech.Infrastructure;
+using BrandonFintech.Platform;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -24,15 +25,18 @@ public class AccountsController : ControllerBase
     private readonly ApplicationDbContext _db;
     private readonly IIdempotencyService _idempotencyService;
     private readonly ILedgerService _ledgerService;
+    private readonly BrandonFintechPlatformAdapter _platformAdapter;
 
     public AccountsController(
         ApplicationDbContext db,
         IIdempotencyService idempotencyService,
-        ILedgerService ledgerService)
+        ILedgerService ledgerService,
+        BrandonFintechPlatformAdapter platformAdapter)
     {
         _db = db;
         _idempotencyService = idempotencyService;
         _ledgerService = ledgerService;
+        _platformAdapter = platformAdapter;
     }
 
     [HttpPost]
@@ -86,6 +90,8 @@ public class AccountsController : ControllerBase
         _db.AuditLogs.Add(auditLog);
 
         await _db.SaveChangesAsync();
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAccountCreated(account));
+        await _platformAdapter.TryPublishAsync(BrandonFintechPlatformMapper.MapAuditLogged(auditLog));
 
         var response = new
         {

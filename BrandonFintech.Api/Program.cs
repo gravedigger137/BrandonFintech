@@ -1,5 +1,6 @@
 using BrandonFintech.Api.Services;
 using BrandonFintech.Infrastructure;
+using BrandonFintech.Platform;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -22,6 +23,19 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ILedgerService, LedgerService>();
 builder.Services.AddScoped<IIdempotencyService, IdempotencyService>();
+builder.Services.AddSingleton<InMemoryPlatformEventPublisher>();
+builder.Services.AddSingleton<IPlatformEventPublisher>(services =>
+    services.GetRequiredService<InMemoryPlatformEventPublisher>());
+builder.Services.AddSingleton(services =>
+{
+    var enabled =
+        PlatformIntegrationFeature.IsEnabled(Environment.GetEnvironmentVariable(PlatformIntegrationFeature.EnvironmentVariableName)) ||
+        PlatformIntegrationFeature.IsEnabled(builder.Configuration["PlatformIntegration:Enabled"]);
+
+    return new BrandonFintechPlatformAdapter(
+        enabled,
+        services.GetRequiredService<IPlatformEventPublisher>());
+});
 
 var jwtIssuer = builder.Configuration["Jwt:Issuer"];
 var jwtAudience = builder.Configuration["Jwt:Audience"];

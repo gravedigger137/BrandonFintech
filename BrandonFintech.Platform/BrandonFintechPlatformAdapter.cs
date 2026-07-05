@@ -29,4 +29,18 @@ public sealed class BrandonFintechPlatformAdapter
 
         return new PlatformPublishResult(PlatformPublishResult.Published, platformEvent.Type, platformEvent.Id);
     }
+
+    public async Task<PlatformPublishResult> TryPublishAsync(
+        PlatformDomainEvent platformEvent,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await PublishAsync(platformEvent, cancellationToken);
+        }
+        catch
+        {
+            return new PlatformPublishResult(PlatformPublishResult.Failed, platformEvent.Type, platformEvent.Id);
+        }
+    }
 }
